@@ -2,7 +2,7 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -52,13 +52,13 @@ func read(next chan<- int, done chan bool) {
 	for scanner.Scan() {
 		data = scanner.Text()
 		if strings.EqualFold(data, "exit") {
-			fmt.Println("Программа завершила работу")
+			log.Println("Программа завершила работу")
 			close(done)
 			return
 		}
 		i, err := strconv.Atoi(data)
 		if err != nil {
-			fmt.Println("Программа обрабатывает только целые числа")
+			log.Println("Программа обрабатывает только целые числа")
 			continue
 		}
 		next <- i
@@ -71,7 +71,10 @@ func negativFilterStageInt(prevStageChan <-chan int, nextStageChan chan<- int, d
 		select {
 		case data := <-prevStageChan:
 			if data > 0 {
+				log.Printf("Проверка числа %v -> число подходит, оно больше 0, передано в следующую стадию пайплайна", data)
 				nextStageChan <- data
+			} else {
+				log.Printf("Проверка числа %v -> число не подходит, оно меньше или равно 0", data)
 			}
 		case <-done:
 			return
@@ -85,7 +88,10 @@ func notDivThreeFunc(prevStageChan <-chan int, nextStageChan chan<- int, done <-
 		select {
 		case data := <-prevStageChan:
 			if data%3 == 0 {
+				log.Printf("Проверка числа %v -> число подходит, оно кратно 3, передано в следующую стадию пайплайна", data)
 				nextStageChan <- data
+			} else {
+				log.Printf("Проверка числа %v -> число не подходит, оно не кратно 3", data)
 			}
 		case <-done:
 			return
@@ -100,10 +106,12 @@ func bufferStageFunc(prevStageChan <-chan int, nextStageChan chan<- int, done <-
 	for {
 		select {
 		case data := <-prevStageChan:
+			log.Printf("Число %v помещено в буфер", data)
 			buffer.Push(data)
 		case <-time.After(interval):
 			bufferData := buffer.Get()
 			if bufferData != nil {
+				log.Printf("Прошло %v, начинается опустошение буфера", interval)
 				for _, data := range bufferData {
 					nextStageChan <- data
 				}
@@ -132,7 +140,7 @@ func main() {
 	for {
 		select {
 		case data := <-bufferedIntChan:
-			fmt.Println("Получены, ", data)
+			log.Println("Получены, ", data)
 		case <-done:
 			return
 
